@@ -3,11 +3,11 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Animation Cape Generetor</title>
+	<title>Cape Motion Lab</title>
 	<meta name="author" content="@cokacolastic">
 	<meta name="copyright" content="© 2026 @cokacolastic">
 	<meta name="description" content="GIFやMP4をマントアニメーション用のPNGフレームへ変換するツール">
-	<meta property="og:title" content="Animation Cape PNG Generator">
+	<meta property="og:title" content="Animation Cape Skin Pack Generator">
 	<meta property="og:description" content="GIF / MP4をマントアニメーション用PNGへ変換">
 	<meta property="og:type" content="website">
 	<link rel="icon" href="image/icon.png" type="image/png">
@@ -17,31 +17,54 @@
 </head>
 <body>
 	<header>
-		<div><h1>Animation Cape PNG Generator For Legacy Console Edition</h1><p class="subtitle" data-ja="GIF / MP4 をマントアニメーション用PNGへ" data-en="Turn GIF / MP4 into cape animation PNGs">GIF / MP4 をマントアニメーション用PNGへ</p></div>
+		<div><h1>Animation Cape Skin Pack Generator For Legacy Console Edition</h1><p class="subtitle" data-ja="GIF / MP4 とスキンからPCKパックを作成" data-en="Create a PCK pack from GIF / MP4 and a skin">GIF / MP4 とスキンからPCKパックを作成</p></div>
 		<div class="lang" aria-label="Language"><button class="active" data-lang="ja">日本語</button><button data-lang="en">EN</button></div>
 	</header>
 	<main>
 		<div class="layout">
 			<section class="panel">
-				<h2 data-ja="1. 素材を読み込む" data-en="1. Load a source">1. 素材を読み込む</h2>
+				<h2 data-ja="1. 素材を読み込む" data-en="1. Load source files">1. 素材を読み込む</h2>
 				<label class="drop" id="dropZone" for="fileInput">
-					<div><strong data-ja="GIF または MP4 を選択" data-en="Choose a GIF or MP4">GIF または MP4 を選択</strong><span data-ja="ここにドラッグ＆ドロップもできます" data-en="You can also drag and drop here">ここにドラッグ＆ドロップもできます</span></div>
+					<div><strong data-ja="GIF または MP4 を選択" data-en="Choose a GIF or MP4">GIF または MP4 を選択</strong><span data-ja="ここにドラッグ＆ドロップもできます" data-en="Drag and drop here too">ここにドラッグ＆ドロップもできます</span></div>
 				</label>
 				<input id="fileInput" type="file" accept="image/gif,video/mp4,.gif,.mp4">
-				<div class="meta"><div class="stat"><small data-ja="ファイル" data-en="File">ファイル</small><b id="fileName">-</b></div><div class="stat"><small data-ja="フレーム" data-en="Frames">フレーム</small><b id="frameCount">-</b></div><div class="stat"><small>PNG / frame</small><b id="sizeInfo">-</b></div><div class="stat"><small data-ja="貼り付け先" data-en="Target area">貼り付け先</small><b>60 × 96 px</b></div></div>
-				<div class="controls"><button class="action" id="processBtn" disabled data-ja="変換する" data-en="Convert">変換する</button><button class="action secondary" id="downloadBtn" disabled data-ja="ZIPをダウンロード" data-en="Download ZIP">ZIPをダウンロード</button></div>
+				<label class="drop skin-drop" id="skinDropZone" for="skinInput">
+					<div><strong data-ja="MinecraftスキンPNGを選択" data-en="Choose Minecraft skin PNGs">MinecraftスキンPNGを選択</strong><span data-ja="複数選択できます。名前は連番になります" data-en="Select multiple files; names will be numbered">複数選択できます。名前は連番になります</span></div>
+				</label>
+				<input id="skinInput" type="file" accept="image/png,.png" multiple>
+				<div class="pack-settings">
+					<label><span data-ja="スキンパック名" data-en="Skin pack name">スキンパック名</span><input id="packNameInput" type="text" value="Cape Skin Pack" maxlength="64"></label>
+					<label><span>PACKID (0-16777215)</span><input id="packIdInput" type="number" min="0" max="16777215" value="0"></label>
+					<label><span data-ja="スキン名（連番の前につける名前）" data-en="Skin name prefix">スキン名（連番の前につける名前）</span><input id="skinNamePrefixInput" type="text" value="Cape Skin" maxlength="64"></label>
+					<fieldset class="endian-settings"><legend data-ja="PCKのバイト順" data-en="PCK byte order">PCKのバイト順</legend><label><input type="radio" name="pckEndian" value="little" checked>Little Endian</label><label><input type="radio" name="pckEndian" value="big">Big Endian</label></fieldset>
+				</div>
+				<div class="meta"><div class="stat"><small data-ja="アニメ素材" data-en="Animation">アニメ素材</small><b id="fileName">-</b></div><div class="stat"><small data-ja="スキン" data-en="Skin">スキン</small><b id="skinName">-</b></div><div class="stat"><small data-ja="フレーム数" data-en="Frames">フレーム数</small><b id="frameCount">-</b></div><div class="stat"><small>PNG / frame</small><b id="sizeInfo">-</b></div></div>
+				<div class="controls"><button class="action" id="processBtn" disabled data-ja="変換する" data-en="Convert">変換する</button><button class="action secondary" id="downloadBtn" disabled data-ja="PNG ZIP" data-en="PNG ZIP">PNG ZIP</button><button class="action secondary" id="downloadPckBtn" disabled data-ja="PCKを保存" data-en="Save PCK">PCKを保存</button></div>
 				<div class="progress" id="progress"><i></i></div><div id="status" role="status"></div>
-				<p class="hint" data-ja="各画像は cape0.png から連番で保存されます。35KBを超える場合は自動的に縮小して再エンコードします。" data-en="Frames are saved as cape0.png and numbered sequentially. Frames over 35KB are automatically resized and re-encoded.">各画像は cape0.png から連番で保存されます。35KBを超える場合は自動的に縮小して再エンコードします。</p>
+				<p class="hint" data-ja="GIFの各コマをスキンとcape PNGの連番ペアにしてPCKへ格納します。PNGフレームZIPも保存できます。" data-en="Each GIF frame is paired with a skin and cape PNG in the PCK. The PNG frame ZIP is also available.">GIFの各コマをスキンとcape PNGの連番ペアにしてPCKへ格納します。PNGフレームZIPも保存できます。</p>
 				<div class="spec">TemplateCapes.png<br>Placement: x 6, y 6 / 60 × 96 px</div>
 			</section>
 			<section class="panel">
 				<h2 data-ja="2. 3Dプレビュー" data-en="2. 3D preview">2. 3Dプレビュー</h2>
-				<div class="stage-wrap"><div class="stage"><img id="preview" class="preview-image active" src="image/TemplateCapes.png" alt="Cape preview"><img id="previewBuffer" class="preview-image" src="image/TemplateCapes.png" alt=""></div></div>
+				<div class="stage-wrap" id="stageWrap"><canvas id="previewCanvas" aria-label="3D skin and cape preview"></canvas><div id="previewPlaceholder" class="preview-placeholder" data-ja="スキンPNGを選ぶと3D表示します" data-en="Choose a skin PNG to show the 3D preview">スキンPNGを選ぶと3D表示します</div></div>
 				<div class="preview-tools"><button class="action secondary" id="playBtn" disabled data-ja="▶ 再生" data-en="▶ Play">▶ 再生</button><input id="frameSlider" type="range" min="0" max="0" value="0" disabled><span class="frame-counter" id="frameLabel">0 / 0</span></div>
 			</section>
 		</div>
 	</main>
-	<footer class="site-footer">© 2026 @cokacolastic · All rights reserved.</footer>
+	<footer class="site-footer">
+		<details class="license-notice">
+			<summary data-ja="ライセンス・クレジット" data-en="Licenses and credits">ライセンス・クレジット</summary>
+			<div class="license-content">
+				<p><strong>Cape Motion Lab</strong><br>© 2026 @cokacolastic · All rights reserved.</p>
+				<ul>
+					<li><strong>JSZip 3.10.1</strong> · MIT OR GPL-3.0 · Copyright © 2009–2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso · <a href="https://github.com/Stuk/jszip/blob/main/LICENSE.markdown" target="_blank" rel="noreferrer">License</a></li>
+					<li><strong>gifuct-js 2.1.2</strong> · MIT · Copyright © 2015 Matt Way · <a href="https://github.com/matt-way/gifuct-js/blob/master/LICENSE" target="_blank" rel="noreferrer">License</a></li>
+					<li><strong>skinview3d 3.4.2</strong> · MIT · Copyright © 2014–2018 Kent Rasmussen; © 2017–2022 Haowei Wen, Sean Boult and contributors · <a href="https://github.com/bs-community/skinview3d/blob/master/LICENSE" target="_blank" rel="noreferrer">License</a></li>
+				</ul>
+			</div>
+		</details>
+		<div>© 2026 @cokacolastic · All rights reserved.</div>
+	</footer>
 	<script>
 		if (location.protocol === 'file:') {
 			document.getElementById('status').textContent = 'Chromeで直接開く場合は動作しません。start-server.batを起動してください。';

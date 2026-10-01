@@ -1,27 +1,23 @@
-# Animated Cape PNG Generator
+# Animation Cape Skin Pack Editior
 
-GIFまたは短いMP4を、マントアニメーション用の連番PNGへ変換するブラウザーアプリケーションです。
+GIFまたは短いMP4とMinecraftスキンPNGから、マント用フレームとPCKパックを作るブラウザーアプリケーションです。
 
-入力された動画をブラウザー内でフレーム分割し、`TemplateCapes.png`へ合成します。生成された画像は`cape0.png`から連番でZIP化してダウンロードできます。
+GIF/MP4の各フレームを`TemplateCapes.png`へ合成し、各フレームに対応するスキンとcape PNGを1組ずつPCKへ格納します。PNG連番ZIPも引き続き保存できます。
 
 ## Features
 
-- GIFのフレーム分割
-- MP4のフレーム抽出（12 fps）
+- GIFのフレーム分割、MP4のフレーム抽出（12 fps）
 - テンプレート画像への自動合成
-- 合成領域 `x: 7 / y: 7 / width: 60 / height: 96`
-- PNG 1枚あたり35KB以下を目標に自動縮小
-- `cape0.png`形式の連番ファイル生成
-- ZIPダウンロード
-- フレームスライダーとプレビュー再生
-- 日本語 / 英語UI
-- ブラウザー内処理によるローカルファイルの非送信
-
-## Requirements
-
-- Google Chrome、Microsoft Edge、Firefoxなどのモダンブラウザー
-- Python 3、またはVS CodeのLive Server
-- インターネット接続（CDNライブラリ読み込み用）
+- `cape0.png`からの連番PNG作成とZIP保存
+- スキン複数選択と`Hero 01`形式の連番名
+- パック名とPACKIDの指定
+- スキンとマントフレームの1対1ペアを含むPCKをメモリー上に生成
+- Big Endian / Little Endianの選択
+- 「PCKを保存」ボタンを押したときだけPCKをダウンロード
+- Minecraftスキン用3Dビューアーでスキンとマントをプレビュー
+- 展開図と空のアセット案内を隠した3D専用表示
+- 3Dモデルのドラッグ回転とGIFフレーム再生（再生中も回転可能）
+- 日本語 / 英語UI、ブラウザー内でのローカル処理
 
 ## Project Structure
 
@@ -42,10 +38,6 @@ AnimationCapeTool/
 `start-server.bat`をダブルクリックしてください。
 
 このスクリプトはプロジェクト直下でHTTPサーバーを起動し、次のURLをブラウザーで開きます。
-
-```text
-http://localhost:8000/index.html
-```
 
 ### Option 2: Pythonから起動する
 
@@ -70,7 +62,7 @@ VS Codeで`index.html`を開き、Live Server拡張機能の「Go Live」を実�
 ## Processing Flow
 
 ```text
-GIF / MP4を選択
+GIF / MP4と1枚以上のスキンPNGを選択
         ↓
 フレームをブラウザー内で抽出
         ↓
@@ -78,10 +70,12 @@ GIF / MP4を選択
         ↓
 PNGサイズを確認し、必要に応じて縮小
         ↓
-cape0.png, cape1.png, ... を生成
+cape0.png, cape1.png, ... と連番スキンを作成
         ↓
-ZIPとしてダウンロード
+PCKを生成し、「PCKを保存」ボタンからダウンロード
 ```
+
+スキン名は入力した接頭辞に`01`、`02`の連番を付けます。各スキンの`CAPEPATH`は対応する`cape0.png`、`cape1.png`を参照します。スキン画像の枚数がフレーム数より少ない場合は、選択したスキンを繰り返し使います。設定を変更した後は「変換する」を押すとPCKを作り直します。
 
 ## External Libraries
 
@@ -89,8 +83,17 @@ ZIPとしてダウンロード
 
 - [JSZip](https://stuk.github.io/jszip/)：PNGフレームのZIP生成
 - [gifuct-js](https://github.com/matt-way/gifuct-js)：GIFの解析とフレーム分割
+- [skinview3d](https://github.com/bs-community/skinview3d)：Minecraftスキンとマントの3D表示
 
 依存関係は`package.json`で管理していないため、現状はビルド処理なしの静的サイトとして動作します。
+
+## Licenses
+
+
+
+- JSZip 3.10.1：MIT OR GPL-3.0。Copyright © 2009–2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso。 [License](https://github.com/Stuk/jszip/blob/main/LICENSE.markdown)
+- gifuct-js 2.1.2：MIT。Copyright © 2015 Matt Way。 [License](https://github.com/matt-way/gifuct-js/blob/master/LICENSE)
+- skinview3d 3.4.2：MIT。Copyright © 2014–2018 Kent Rasmussen、© 2017–2022 Haowei Wen、Sean Boult and contributors。 [License](https://github.com/bs-community/skinview3d/blob/master/LICENSE)
 
 ## Deployment
 
@@ -119,8 +122,8 @@ image/TemplateCapes.png
 現在のテンプレートは次の仕様で使用しています。
 
 - ファイル名：`image/TemplateCapes.png`
-- 実画像サイズ：384 × 192 px
-- 合成位置：`x=7, y=7`
+- 実画像サイズ：512 × 288 px
+- 合成位置：`x=6, y=6`
 - 合成領域：60 × 96 px
 
 テンプレートを変更する場合は、ファイル名を`TemplateCapes.png`に合わせてください。画像サイズを変更する場合は、`script.js`の`TARGET`設定と表示仕様も確認してください。
@@ -130,4 +133,4 @@ image/TemplateCapes.png
 - 変換処理はサーバーへファイルをアップロードせず、ブラウザー上で実行します。
 - 長時間のMP4や高フレームレートのGIFは、多数のPNGを生成するためメモリを多く使用します。
 - PNGは可逆形式のため、画像内容によっては35KB以下に収めるために合成画像内の素材表示サイズが縮小されます。
-- CDNが利用できない環境ではGIF変換機能とZIP生成機能が動作しません。
+- CDNが利用できない環境ではGIF変換、ZIP生成、3Dプレビューが動作しません。
