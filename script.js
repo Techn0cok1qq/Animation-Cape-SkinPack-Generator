@@ -3,7 +3,7 @@ import * as skinview3d from 'https://esm.sh/skinview3d@3.4.2';
 
 const TARGET = { x: 6, y: 6, width: 60, height: 96, maxBytes: 35 * 1024 };
 const $ = (id) => document.getElementById(id);
-const state = { file:null, skinFiles:[], skinUrl:null, previewSkinImage:null, frames:[], capeImages:[], skinViewer:null, switching:false, playing:false, processing:false, timer:null, lang:'ja', pckBlob:null, pckFilename:'', previewFrame:0 };
+const state = { file:null, skinFiles:[], skinUrl:null, previewSkinImage:null, frames:[], capeBlobs:[], capeImages:[], skinViewer:null, switching:false, playing:false, processing:false, timer:null, lang:'ja', pckBlob:null, pckFilename:'', previewFrame:0 };
 const template = new Image();
 template.src = 'image/TemplateCapes.png';
 
@@ -100,8 +100,8 @@ async function processFile() {
 	if (!state.file || !template.complete || state.processing) return; state.processing = true; $('processBtn').disabled = true; $('downloadBtn').disabled = true; $('downloadPckBtn').disabled = true; setProgress(0); setStatus(state.lang === 'ja' ? 'フレームを解析しています...' : 'Reading frames...');
 	try {
 		let sources = state.file.type === 'image/gif' || state.file.name.toLowerCase().endsWith('.gif') ? await loadGif(state.file) : await loadMp4(state.file);
-		state.frames = []; state.capeImages.forEach((image) => image.close()); state.capeImages = [];
-		for (let i = 0; i < sources.length; i++) { const source = typeof sources[i] === 'string' ? await new Promise((resolve) => { const image = new Image(); image.onload = () => resolve(image); image.src = sources[i]; }) : sources[i]; const blob = await encodeFrame(source); const capeBlob = await makeCapeTexture(blob); state.frames.push(blob); state.capeImages.push(await createImageBitmap(capeBlob)); setProgress((i + 1) / sources.length); }
+		state.frames = []; state.capeBlobs = []; state.capeImages.forEach((image) => image.close()); state.capeImages = [];
+		for (let i = 0; i < sources.length; i++) { const source = typeof sources[i] === 'string' ? await new Promise((resolve) => { const image = new Image(); image.onload = () => resolve(image); image.src = sources[i]; }) : sources[i]; const blob = await encodeFrame(source); const capeBlob = await makeCapeTexture(blob); state.frames.push(blob); state.capeBlobs.push(capeBlob); state.capeImages.push(await createImageBitmap(capeBlob)); setProgress((i + 1) / sources.length); }
 		$('frameCount').textContent = state.frames.length; $('sizeInfo').textContent = `${Math.round(state.frames[0].size / 1024)}KB`; $('frameSlider').max = state.frames.length - 1; $('frameSlider').disabled = false; $('playBtn').disabled = false; $('downloadBtn').disabled = false; await setFrame(0);
 		if (state.skinFiles.length) { state.pckBlob = await buildPck(); state.pckFilename = `${safePackName($('packNameInput').value)}.pck`; $('downloadPckBtn').disabled = false; const pairCount = Math.max(state.skinFiles.length, state.frames.length); setStatus(state.lang === 'ja' ? `${pairCount}個のスキンとcape PNGのペアでPCKを作成しました` : `PCK created with ${pairCount} skin and cape pairs`); }
 		else { setStatus(state.lang === 'ja' ? `${state.frames.length}フレームを変換しました。スキンPNGを選ぶとPCKを作成します` : `${state.frames.length} frames converted. Add a skin PNG to create the PCK`); }
@@ -161,7 +161,7 @@ async function buildPck() {
 		const id = randomBase + index;
 		const paddedId = String(id).padStart(8, '0');
 		const skinName = `${skinNamePrefix} ${String(index + 1).padStart(2, '0')}`;
-		const capeFilename = `cape${index}.png`;
+		const capeFilename = `dlccape${paddedId}.png`;
 		const properties = [
 			{ key:'DISPLAYNAME', value:skinName },
 			{ key:'DISPLAYNAMEID', value:`IDS_dlcskin${paddedId}_DISPLAYNAME` },
@@ -171,7 +171,7 @@ async function buildPck() {
 			{ key:'CAPEPATH', value:capeFilename }
 		];
 		const skinFile = state.skinFiles[index % state.skinFiles.length];
-		const capeFrame = state.frames[index % state.frames.length];
+		const capeFrame = state.capeBlobs[index % state.capeBlobs.length];
 		skinEntries.push({ id:paddedId, name:skinName, filename:`dlcskin${paddedId}.png`, capeFilename, properties, data:new Uint8Array(await skinFile.arrayBuffer()), capeData:new Uint8Array(await capeFrame.arrayBuffer()) });
 	}
 	const languages = ['cs-CS','cs-CZ','da-DA','da-DK','de-DE','el-EL','el-GR','en-EN','en-GB','es-ES','es-MX','fi-FI','fr-FR','it-IT','ja-JP','ko-KR','la-LAS','nb-NO','nl-NL','no-NO','pl-PL','pt-BR','pt-PT','ru-RU','sk-SK','sv-SE','sv-SV','tr-TR','zh-CHT','zh-CN','zh-HANS','zh-HANT'];
