@@ -1,4 +1,4 @@
-# Animation Cape Skin Pack Editior
+# Animation Cape Skin Pack Gen
 
 GIFまたは短いMP4とMinecraftスキンPNGから、マント用フレームとPCKパックを作るブラウザーアプリケーションです。
 
