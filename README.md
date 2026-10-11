@@ -1,6 +1,6 @@
-# Animation Cape Skin Pack Gen
+# Animation Skin & Cape Skin Pack Gen
 
-GIFまたは短いMP4とMinecraftスキンPNGから、マント用フレームとPCKパックを作るブラウザーアプリケーションです。
+GIFまたは短いMP4、およびMinecraftスキンPNG（またはZIP）の連番から、スキン、マント用フレームとPCKパックを作るブラウザーアプリケーションです。
 
 GIF/MP4の各フレームを`TemplateCapes.png`へ合成し、各フレームに対応するスキンとcape PNGを1組ずつPCKへ格納します。PNG連番ZIPも引き続き保存できます。
 
@@ -9,14 +9,17 @@ GIF/MP4の各フレームを`TemplateCapes.png`へ合成し、各フレームに
 - GIFのフレーム分割、MP4のフレーム抽出（12 fps）
 - テンプレート画像への自動合成
 - `cape0.png`からの連番PNG作成とZIP保存
-- スキン複数選択と`Hero 01`形式の連番名
+- スキンPNGの複数選択、またはZIPでの一括読み込み
+- スキンはファイル名の数字順（`skin_2` < `skin_10`）に自動で並べ替え、`Hero 01`形式の連番名を付与
+- GIF/MP4なしでも、スキンだけでPCKを作成可能（マントなし）
+- PNG ZIPにcape連番（`cape0.png`…）とスキン連番（`skins/skin01.png`…）を格納
 - パック名とPACKIDの指定
 - スキンとマントフレームの1対1ペアを含むPCKをメモリー上に生成
 - Big Endian / Little Endianの選択
 - 「PCKを保存」ボタンを押したときだけPCKをダウンロード
 - Minecraftスキン用3Dビューアーでスキンとマントをプレビュー
 - 展開図と空のアセット案内を隠した3D専用表示
-- 3Dモデルのドラッグ回転とGIFフレーム再生（再生中も回転可能）
+- 3Dモデルのドラッグ回転と、スキン・マント両方のコマ再生（再生中も回転可能）
 - 日本語 / 英語UI、ブラウザー内でのローカル処理
 
 ## Project Structure
@@ -62,7 +65,7 @@ VS Codeで`index.html`を開き、Live Server拡張機能の「Go Live」を実�
 ## Processing Flow
 
 ```text
-GIF / MP4と1枚以上のスキンPNGを選択
+GIF / MP4（任意）と1枚以上のスキンPNG／ZIPを選択
         ↓
 フレームをブラウザー内で抽出
         ↓
@@ -75,7 +78,7 @@ ZIP用のcape0.png, cape1.png, ... とPCK内のID対応アセットを作成
 PCKを生成し、「PCKを保存」ボタンからダウンロード
 ```
 
-スキン名は入力した接頭辞に`01`、`02`の連番を付けます。PCK内では各`dlcskin<ID>.png`に対応する`dlccape<ID>.png`を格納し、`CAPEPATH`もそのファイルを参照します。PNG ZIP内のフレーム名は`cape0.png`、`cape1.png`の連番です。スキン画像の枚数がフレーム数より少ない場合は、選択したスキンを繰り返し使います。設定を変更した後は「変換する」を押すとPCKを作り直します。
+スキンはファイル名の数字順に並べ替えたうえで、入力した接頭辞に`01`、`02`の連番を付けます。ID（`dlcskin<ID>.png`）も同じ順で連番になるため、ゲーム内のアニメーションスキン一覧でも順番どおりに並びます。PCK内では各`dlcskin<ID>.png`に対応する`dlccape<ID>.png`を格納し、`CAPEPATH`もそのファイルを参照します。PNG ZIP内のフレーム名は`cape0.png`、`cape1.png`の連番です。スキン画像の枚数がフレーム数より少ない場合は、選択したスキンを繰り返し使います。GIF/MP4を選ばない場合は、スキンだけのPCKを作成します（`CAPEPATH`は付きません）。設定を変更した後は「変換する」を押すとPCKを作り直します。
 
 ## External Libraries
 

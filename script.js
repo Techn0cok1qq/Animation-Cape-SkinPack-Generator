@@ -3,7 +3,7 @@ import * as skinview3d from 'https://esm.sh/skinview3d@3.4.2';
 
 const TARGET = { x: 6, y: 6, width: 60, height: 96, maxBytes: 35 * 1024 };
 const $ = (id) => document.getElementById(id);
-const state = { file:null, skinFiles:[], skinUrl:null, previewSkinImage:null, frames:[], capeBlobs:[], capeImages:[], skinViewer:null, switching:false, playing:false, processing:false, timer:null, lang:'ja', pckBlob:null, pckFilename:'', previewFrame:0 };
+const state = { file:null, skinFiles:[], skinImages:[], skinUrl:null, previewSkinImage:null, frames:[], capeBlobs:[], capeImages:[], skinViewer:null, switching:false, playing:false, processing:false, timer:null, lang:'ja', pckBlob:null, pckFilename:'', previewFrame:0 };
 const template = new Image();
 template.src = 'image/TemplateCapes.png';
 
@@ -36,15 +36,29 @@ function setSkinTexture(image) {
 	state.skinViewer.loadSkin(image);
 	$('previewPlaceholder').hidden = true;
 }
-async function loadPreviewSkin(file) {
-	const url = URL.createObjectURL(file);
-	const image = new Image();
-	try {
-		await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = url; });
-		if (image.width !== image.height && image.width !== image.height * 2) throw new Error('スキン画像は64×64または64×32形式にしてください');
-		if (state.skinUrl) URL.revokeObjectURL(state.skinUrl);
-		state.skinUrl = url; state.previewSkinImage = image; setSkinTexture(image);
-	} catch (error) { URL.revokeObjectURL(url); setStatus(error.message, true); }
+function naturalName(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});}
+async function expandSkinFiles(files){
+	const result=[];
+	for(const file of files){
+		if(/\.zip$/i.test(file.name)){
+			const zip=await JSZip.loadAsync(file);
+			const entries=Object.values(zip.files).filter((entry)=>!entry.dir&&/\.png$/i.test(entry.name)&&!entry.name.includes('__MACOSX')&&!entry.name.split('/').pop().startsWith('._'));
+			for(const entry of entries){const blob=await entry.async('blob');result.push(new File([blob],entry.name.split('/').pop(),{type:'image/png'}));}
+		}else result.push(file);
+	}
+	return result.sort(naturalName);
+}
+async function loadSkinImages(files){
+	const images=[];
+	try{
+		for(const file of files){
+			const bitmap=await createImageBitmap(file);
+			if(bitmap.width!==bitmap.height&&bitmap.width!==bitmap.height*2){bitmap.close();throw new Error(`${file.name}: スキン画像は64×64または64×32形式にしてください`);}
+			images.push(bitmap);
+		}
+	}catch(error){images.forEach((image)=>image.close());throw error;}
+	state.skinImages.forEach((image)=>image.close());
+	state.skinImages=images;
 }
 async function makeCapeTexture(frameBlob) {
 	const source = await createImageBitmap(frameBlob);
@@ -61,7 +75,9 @@ async function makeCapeTexture(frameBlob) {
 	return canvasBlob(canvas);
 }
 function setCapeFrame(index){if(state.skinViewer&&state.capeImages[index])state.skinViewer.loadCape(state.capeImages[index]);}
-async function setFrame(index) { if (!state.frames.length || state.switching) return; state.switching = true; try { const safe = Math.max(0, Math.min(index, state.frames.length - 1)); state.previewFrame = safe; setCapeFrame(safe); $('frameSlider').value = safe; $('frameLabel').textContent = `${safe + 1} / ${state.frames.length}`; } finally { state.switching = false; } }
+function previewCount(){return Math.max(state.skinImages.length,state.frames.length);}
+function refreshPreviewControls(){const total=previewCount();$('frameSlider').max=Math.max(0,total-1);$('frameSlider').disabled=total<2;$('playBtn').disabled=total<2;$('frameLabel').textContent=`${Math.min(state.previewFrame,Math.max(0,total-1))+1} / ${total}`;}
+async function setFrame(index) { const total=previewCount(); if (!total || state.switching) return; state.switching = true; try { const safe = Math.max(0, Math.min(index, total - 1)); state.previewFrame = safe; if (state.skinImages.length) setSkinTexture(state.skinImages[safe % state.skinImages.length]); if (state.capeImages.length) setCapeFrame(safe % state.capeImages.length); $('frameSlider').value = safe; $('frameLabel').textContent = `${safe + 1} / ${total}`; } finally { state.switching = false; } }
 function canvasBlob(canvas) { return new Promise((resolve) => canvas.toBlob(resolve, 'image/png')); }
 async function encodeFrame(source) {
 	const canvas = document.createElement('canvas'); canvas.width = template.naturalWidth || 512; canvas.height = template.naturalHeight || 288;
@@ -97,19 +113,19 @@ async function loadMp4(file) {
 	URL.revokeObjectURL(video.src); return frames;
 }
 async function processFile() {
-	if (!state.file || !template.complete || state.processing) return; state.processing = true; $('processBtn').disabled = true; $('downloadBtn').disabled = true; $('downloadPckBtn').disabled = true; setProgress(0); setStatus(state.lang === 'ja' ? 'フレームを解析しています...' : 'Reading frames...');
+	if (!state.file) { if (state.skinFiles.length && !state.processing) await buildSkinOnlyPck(); return; } if (!template.complete || state.processing) return; state.processing = true; $('processBtn').disabled = true; $('downloadBtn').disabled = true; $('downloadPckBtn').disabled = true; setProgress(0); setStatus(state.lang === 'ja' ? 'フレームを解析しています...' : 'Reading frames...');
 	try {
 		let sources = state.file.type === 'image/gif' || state.file.name.toLowerCase().endsWith('.gif') ? await loadGif(state.file) : await loadMp4(state.file);
 		state.frames = []; state.capeBlobs = []; state.capeImages.forEach((image) => image.close()); state.capeImages = [];
 		for (let i = 0; i < sources.length; i++) { const source = typeof sources[i] === 'string' ? await new Promise((resolve) => { const image = new Image(); image.onload = () => resolve(image); image.src = sources[i]; }) : sources[i]; const blob = await encodeFrame(source); const capeBlob = await makeCapeTexture(blob); state.frames.push(blob); state.capeBlobs.push(capeBlob); state.capeImages.push(await createImageBitmap(capeBlob)); setProgress((i + 1) / sources.length); }
-		$('frameCount').textContent = state.frames.length; $('sizeInfo').textContent = `${Math.round(state.frames[0].size / 1024)}KB`; $('frameSlider').max = state.frames.length - 1; $('frameSlider').disabled = false; $('playBtn').disabled = false; $('downloadBtn').disabled = false; await setFrame(0);
+		$('frameCount').textContent = state.frames.length; $('sizeInfo').textContent = `${Math.round(state.frames[0].size / 1024)}KB`; $('downloadBtn').disabled = false; refreshPreviewControls(); await setFrame(0);
 		if (state.skinFiles.length) { state.pckBlob = await buildPck(); state.pckFilename = `${safePackName($('packNameInput').value)}.pck`; $('downloadPckBtn').disabled = false; const pairCount = Math.max(state.skinFiles.length, state.frames.length); setStatus(state.lang === 'ja' ? `${pairCount}個のスキンとcape PNGのペアでPCKを作成しました` : `PCK created with ${pairCount} skin and cape pairs`); }
 		else { setStatus(state.lang === 'ja' ? `${state.frames.length}フレームを変換しました。スキンPNGを選ぶとPCKを作成します` : `${state.frames.length} frames converted. Add a skin PNG to create the PCK`); }
 		setProgress(1, false);
 	} catch (error) { console.error(error); setStatus(state.lang === 'ja' ? `変換に失敗しました: ${error.message}` : `Conversion failed: ${error.message}`, true); setProgress(0, false); }
 	$('processBtn').disabled = false; state.processing = false;
 }
-async function downloadZip() { const zip = new JSZip(); state.frames.forEach((blob, index) => zip.file(`cape${index}.png`, blob)); $('downloadBtn').disabled = true; setStatus(state.lang === 'ja' ? 'ZIPを作成しています...' : 'Creating ZIP...'); const blob = await zip.generateAsync({ type:'blob', compression:'STORE' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'cape-frames.zip'; link.click(); URL.revokeObjectURL(link.href); $('downloadBtn').disabled = false; setStatus(state.lang === 'ja' ? 'ZIPをダウンロードしました' : 'ZIP downloaded'); }
+async function downloadZip() { if (!state.frames.length && !state.skinFiles.length) return; const zip = new JSZip(); state.frames.forEach((blob, index) => zip.file(`cape${index}.png`, blob)); const pad = Math.max(2, String(state.skinFiles.length).length); state.skinFiles.forEach((file, index) => zip.file(`skins/skin${String(index + 1).padStart(pad, '0')}.png`, file)); $('downloadBtn').disabled = true; setStatus(state.lang === 'ja' ? 'ZIPを作成しています...' : 'Creating ZIP...'); const blob = await zip.generateAsync({ type:'blob', compression:'STORE' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = state.frames.length ? 'cape-frames.zip' : 'skin-frames.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); $('downloadBtn').disabled = false; setStatus(state.lang === 'ja' ? 'ZIPをダウンロードしました' : 'ZIP downloaded'); }
 function sanitizeName(name) { return String(name).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'cape-skin-pack'; }
 function safePackName(filename) { return sanitizeName(filename.replace(/\.[^.]+$/, '')); }
 function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
@@ -161,6 +177,7 @@ async function buildPck() {
 		const id = randomBase + index;
 		const paddedId = String(id).padStart(8, '0');
 		const skinName = `${skinNamePrefix} ${String(index + 1).padStart(2, '0')}`;
+		const hasCape = state.capeBlobs.length > 0;
 		const capeFilename = `dlccape${paddedId}.png`;
 		const properties = [
 			{ key:'DISPLAYNAME', value:skinName },
@@ -168,11 +185,11 @@ async function buildPck() {
 			{ key:'ANIM', value:'0x00040000' },
 			{ key:'GAME_FLAGS', value:'0x18' },
 			{ key:'FREE', value:'1' },
-			{ key:'CAPEPATH', value:capeFilename }
+			...(hasCape ? [{ key:'CAPEPATH', value:capeFilename }] : [])
 		];
 		const skinFile = state.skinFiles[index % state.skinFiles.length];
-		const capeFrame = state.capeBlobs[index % state.capeBlobs.length];
-		skinEntries.push({ id:paddedId, name:skinName, filename:`dlcskin${paddedId}.png`, capeFilename, properties, data:new Uint8Array(await skinFile.arrayBuffer()), capeData:new Uint8Array(await capeFrame.arrayBuffer()) });
+		const capeFrame = hasCape ? state.capeBlobs[index % state.capeBlobs.length] : null;
+		skinEntries.push({ id:paddedId, name:skinName, filename:`dlcskin${paddedId}.png`, capeFilename, properties, data:new Uint8Array(await skinFile.arrayBuffer()), capeData:capeFrame ? new Uint8Array(await capeFrame.arrayBuffer()) : null });
 	}
 	const languages = ['cs-CS','cs-CZ','da-DA','da-DK','de-DE','el-EL','el-GR','en-EN','en-GB','es-ES','es-MX','fi-FI','fr-FR','it-IT','ja-JP','ko-KR','la-LAS','nb-NO','nl-NL','no-NO','pl-PL','pt-BR','pt-PT','ru-RU','sk-SK','sv-SE','sv-SV','tr-TR','zh-CHT','zh-CN','zh-HANS','zh-HANT'];
 	const locKeys = ['IDS_DISPLAY_NAME', ...skinEntries.map((entry) => `IDS_dlcskin${entry.id}_DISPLAYNAME`)];
@@ -184,21 +201,27 @@ async function buildPck() {
 	];
 	for (const entry of skinEntries) {
 		assets.push({ filename:entry.filename, typeCode:0, properties:entry.properties, data:entry.data, dataSize:entry.data.byteLength });
-		assets.push({ filename:entry.capeFilename, typeCode:1, properties:[], data:entry.capeData, dataSize:entry.capeData.byteLength });
+		if (entry.capeData) assets.push({ filename:entry.capeFilename, typeCode:1, properties:[], data:entry.capeData, dataSize:entry.capeData.byteLength });
 	}
 	const littleEndian = document.querySelector('input[name="pckEndian"]:checked')?.value === 'little';
 	return new Blob([encodePck(assets,8,littleEndian)], { type:'application/octet-stream' });
+}
+async function buildSkinOnlyPck() {
+	try {
+		state.pckBlob = await buildPck(); state.pckFilename = `${safePackName($('packNameInput').value)}.pck`; $('downloadPckBtn').disabled = false; $('downloadBtn').disabled = false;
+		setStatus(state.lang === 'ja' ? `${state.skinFiles.length}個のスキンでPCKを作成しました（マントなし）` : `PCK created with ${state.skinFiles.length} skins (no cape)`);
+	} catch (error) { console.error(error); setStatus(error.message, true); }
 }
 function clearGeneratedFiles() { state.pckBlob = null; state.pckFilename = ''; $('downloadPckBtn').disabled = true; $('downloadBtn').disabled = true; }
 initializePreview();
 function selectAnimation(file) { if (!file) return; state.file = file; $('fileName').textContent = file.name; clearGeneratedFiles(); $('processBtn').disabled = false; setStatus(''); if (state.skinFiles.length) processFile(); }
 $('fileInput').addEventListener('change', (event) => selectAnimation(event.target.files[0]));
-$('skinInput').addEventListener('change', (event) => { const files = Array.from(event.target.files); if (!files.length) return; if (files.some((file) => !file.name.toLowerCase().endsWith('.png'))) { setStatus(state.lang === 'ja' ? 'スキンはPNG画像を選択してください' : 'Choose PNG skin images', true); return; } state.skinFiles = files; $('skinName').textContent = files.length === 1 ? files[0].name : `${files.length}枚のPNG`; loadPreviewSkin(files[0]); clearGeneratedFiles(); if (state.file) processFile(); });
+$('skinInput').addEventListener('change', async (event) => { const picked = Array.from(event.target.files); if (!picked.length) return; const ja = state.lang === 'ja'; if (picked.some((file) => !/\.(png|zip)$/i.test(file.name))) { setStatus(ja ? 'スキンはPNG画像またはZIPを選択してください' : 'Choose PNG images or a ZIP', true); return; } try { setStatus(ja ? 'スキンを読み込んでいます...' : 'Loading skins...'); const files = await expandSkinFiles(picked); if (!files.length) throw new Error(ja ? 'PNGが見つかりません' : 'No PNG found'); await loadSkinImages(files); state.skinFiles = files; $('skinName').textContent = files.length === 1 ? files[0].name : `${files.length}枚（${files[0].name} → ${files[files.length - 1].name}）`; clearGeneratedFiles(); $('processBtn').disabled = false; refreshPreviewControls(); await setFrame(0); setStatus(''); if (state.file) await processFile(); else await buildSkinOnlyPck(); } catch (error) { console.error(error); setStatus(error.message, true); } });
 $('processBtn').addEventListener('click', processFile); $('downloadBtn').addEventListener('click', downloadZip); $('frameSlider').addEventListener('input', (event) => { setFrame(Number(event.target.value)); });
 $('downloadPckBtn').addEventListener('click', () => { if (state.pckBlob) downloadBlob(state.pckBlob, state.pckFilename); });
 ['packNameInput','packIdInput','skinNamePrefixInput'].forEach((id) => $(id).addEventListener('input', () => { clearGeneratedFiles(); if (state.file && state.skinFiles.length) setStatus(state.lang === 'ja' ? '設定を変更しました。「変換する」を押すとPCKを作り直します' : 'Settings changed. Click Convert to rebuild the PCK'); }));
 document.querySelectorAll('input[name="pckEndian"]').forEach((radio) => radio.addEventListener('change', () => { clearGeneratedFiles(); if (state.file && state.skinFiles.length) setStatus(state.lang === 'ja' ? 'バイト順を変更しました。「変換する」を押すとPCKを作り直します' : 'Byte order changed. Click Convert to rebuild the PCK'); }));
-$('playBtn').addEventListener('click', () => { state.playing = !state.playing; $('playBtn').textContent = state.playing ? (state.lang === 'ja' ? 'Ⅱ 停止' : 'Ⅱ Pause') : (state.lang === 'ja' ? '▶ 再生' : '▶ Play'); if (state.playing) { state.timer = setInterval(async () => { if (!state.switching) await setFrame((Number($('frameSlider').value) + 1) % state.frames.length); }, 100); } else clearInterval(state.timer); });
+$('playBtn').addEventListener('click', () => { state.playing = !state.playing; $('playBtn').textContent = state.playing ? (state.lang === 'ja' ? 'Ⅱ 停止' : 'Ⅱ Pause') : (state.lang === 'ja' ? '▶ 再生' : '▶ Play'); if (state.playing) { state.timer = setInterval(async () => { if (!state.switching) await setFrame((Number($('frameSlider').value) + 1) % previewCount()); }, 100); } else clearInterval(state.timer); });
 document.querySelectorAll('[data-lang]').forEach((button) => button.addEventListener('click', () => { state.lang = button.dataset.lang; document.querySelectorAll('[data-lang]').forEach((item) => item.classList.toggle('active', item === button)); updateText(); }));
 ['dragenter','dragover'].forEach((eventName) => $('dropZone').addEventListener(eventName, (event) => { event.preventDefault(); $('dropZone').classList.add('dragover'); })); $('dropZone').addEventListener('dragleave', () => $('dropZone').classList.remove('dragover')); $('dropZone').addEventListener('drop', (event) => { event.preventDefault(); $('dropZone').classList.remove('dragover'); const file = event.dataTransfer.files[0]; if (file) { $('fileInput').files = event.dataTransfer.files; $('fileInput').dispatchEvent(new Event('change')); } });
 ['dragenter','dragover'].forEach((eventName) => $('skinDropZone').addEventListener(eventName, (event) => { event.preventDefault(); $('skinDropZone').classList.add('dragover'); })); $('skinDropZone').addEventListener('dragleave', () => $('skinDropZone').classList.remove('dragover')); $('skinDropZone').addEventListener('drop', (event) => { event.preventDefault(); $('skinDropZone').classList.remove('dragover'); const file = event.dataTransfer.files[0]; if (file) { $('skinInput').files = event.dataTransfer.files; $('skinInput').dispatchEvent(new Event('change')); } });

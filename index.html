@@ -3,12 +3,12 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Animation Cape Skin Pack Generator</title>
+	<title>Animation Skin & Cape Pack Generator</title>
 	<meta name="author" content="@cokacolastic">
 	<meta name="copyright" content="© 2026 @cokacolastic">
-	<meta name="description" content="GIFやMP4をマントアニメーション用のPNGフレームへ変換し、自動でpckファイルを生成するツールです。">
+	<meta name="description" content="GIFやMP4をアニメーション用のPNGフレームへ変換し、自動でpckファイルを生成するツールです。">
 	<meta property="og:title" content="Animation Cape Skin Pack Generator">
-	<meta property="og:description" content="GIF / MP4をマントアニメーション用PNGへ変換&自動pck生成">
+	<meta property="og:description" content="GIF / MP4をアニメーション用PNGへ変換&自動pck生成">
 	<meta property="og:type" content="website">
 	<link rel="icon" href="image/icon.png" type="image/png">
 	<link rel="apple-touch-icon" href="image/icon.png">
@@ -17,7 +17,7 @@
 </head>
 <body>
 	<header>
-		<div><h1>Animation Cape Skin Pack Generator For Legacy Console Edition</h1><p class="subtitle" data-ja="GIF / MP4 とスキンからPCKパックを作成" data-en="Create a PCK pack from GIF / MP4 and a skin">GIF / MP4 とスキンからPCKパックを作成</p></div>
+		<div><h1>Animation Skin Pack Generator For Legacy Console Edition</h1><p class="subtitle" data-ja="GIF / MP4・スキン連番からPCKパックを作成" data-en="Create a PCK pack from GIF / MP4 and skin sequences">GIF / MP4・スキン連番からPCKパックを作成</p></div>
 		<div class="lang" aria-label="Language"><button class="active" data-lang="ja">日本語</button><button data-lang="en">EN</button></div>
 	</header>
 	<main>
@@ -25,13 +25,13 @@
 			<section class="panel">
 				<h2 data-ja="1. 素材を読み込む" data-en="1. Load source files">1. 素材を読み込む</h2>
 				<label class="drop" id="dropZone" for="fileInput">
-					<div><strong data-ja="GIF または MP4 を選択" data-en="Choose a GIF or MP4">GIF または MP4 を選択</strong><span data-ja="ここにドラッグ＆ドロップもできます" data-en="Drag and drop here too">ここにドラッグ＆ドロップもできます</span></div>
+					<div><strong data-ja="GIF または MP4 を選択" data-en="Choose a GIF or MP4">GIF または MP4 を選択</strong><span data-ja="マントを動かす場合のみ必要です（スキンだけなら不要）" data-en="Only needed for animated capes (not needed for skins only)">マントを動かす場合のみ必要です（スキンだけなら不要）</span></div>
 				</label>
 				<input id="fileInput" type="file" accept="image/gif,video/mp4,.gif,.mp4">
 				<label class="drop skin-drop" id="skinDropZone" for="skinInput">
-					<div><strong data-ja="MinecraftスキンPNGを選択" data-en="Choose Minecraft skin PNGs">MinecraftスキンPNGを選択</strong><span data-ja="複数選択できます。名前は連番になります" data-en="Select multiple files; names will be numbered">複数選択できます。名前は連番になります</span></div>
+					<div><strong data-ja="MinecraftスキンPNG（またはZIP）を選択" data-en="Choose Minecraft skin PNGs (or a ZIP)">MinecraftスキンPNG（またはZIP）を選択</strong><span data-ja="複数選択またはZIPで一括読み込み。ファイル名の数字順に並べます" data-en="Select multiple PNGs or a ZIP. Sorted by the number in each file name">複数選択またはZIPで一括読み込み。ファイル名の数字順に並べます</span></div>
 				</label>
-				<input id="skinInput" type="file" accept="image/png,.png" multiple>
+				<input id="skinInput" type="file" accept="image/png,.png,application/zip,.zip" multiple>
 				<div class="pack-settings">
 					<label><span data-ja="スキンパック名" data-en="Skin pack name">スキンパック名</span><input id="packNameInput" type="text" value="Cape Skin Pack" maxlength="64"></label>
 					<label><span>PACKID (0-16777215)</span><input id="packIdInput" type="number" min="0" max="16777215" value="0"></label>
@@ -41,7 +41,7 @@
 				<div class="meta"><div class="stat"><small data-ja="アニメ素材" data-en="Animation">アニメ素材</small><b id="fileName">-</b></div><div class="stat"><small data-ja="スキン" data-en="Skin">スキン</small><b id="skinName">-</b></div><div class="stat"><small data-ja="フレーム数" data-en="Frames">フレーム数</small><b id="frameCount">-</b></div><div class="stat"><small>PNG / frame</small><b id="sizeInfo">-</b></div></div>
 				<div class="controls"><button class="action" id="processBtn" disabled data-ja="変換する" data-en="Convert">変換する</button><button class="action secondary" id="downloadBtn" disabled data-ja="PNG ZIP" data-en="PNG ZIP">PNG ZIP</button><button class="action secondary" id="downloadPckBtn" disabled data-ja="PCKを保存" data-en="Save PCK">PCKを保存</button></div>
 				<div class="progress" id="progress"><i></i></div><div id="status" role="status"></div>
-				<p class="hint" data-ja="GIFの各コマをスキンとcape PNGの連番ペアにしてPCKへ格納します。PNGフレームZIPも保存できます。" data-en="Each GIF frame is paired with a skin and cape PNG in the PCK. The PNG frame ZIP is also available.">GIFの各コマをスキンとcape PNGの連番ペアにしてPCKへ格納します。PNGフレームZIPも保存できます。</p>
+				<p class="hint" data-ja="スキンはファイル名の数字順にコマとして並べ、GIFがあればcapeと1コマずつペアにしてPCKへ格納します。PNG ZIPにはcapeとスキンの連番が入ります。" data-en="Skins are ordered by the number in their file names and paired frame by frame with capes (if a GIF is given) in the PCK. The PNG ZIP contains the cape and skin sequences.">スキンはファイル名の数字順にコマとして並べ、GIFがあればcapeと1コマずつペアにしてPCKへ格納します。PNG ZIPにはcapeとスキンの連番が入ります。</p>
 				<div class="spec">TemplateCapes.png<br>Placement: x 6, y 6 / 60 × 96 px</div>
 			</section>
 			<section class="panel">
