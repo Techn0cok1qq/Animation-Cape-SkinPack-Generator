@@ -137,3 +137,16 @@ image/TemplateCapes.png
 - 長時間のMP4や高フレームレートのGIFは、多数のPNGを生成するためメモリを多く使用します。
 - PNGは可逆形式のため、画像内容によっては35KB以下に収めるために合成画像内の素材表示サイズが縮小されます。
 - CDNが利用できない環境ではGIF変換、ZIP生成、3Dプレビューが動作しません。
+
+## Theme (Minecraft style)
+
+- 見た目は`style.css`のみで定義しています（機能は`script.js`のまま）
+- 背景は`style.css`冒頭の`--bg-image`と`--bg-overlay`を変更してください（初期値は`image/bg.jpg`のタイル）
+- フォントは英数字が`fonts/minecraft.ttf`、日本語がGoogle Fontsの`DotGothic16`です
+
+## Fonts / Credits
+
+- `fonts/minecraft.ttf` — Minecraft font, CC BY-SA（Creative Commons 表示-継承）。作者名: （ダウンロード元で確認して記入）
+- DotGothic16 — SIL Open Font License 1.1（Google Fontsから読み込み）
+
+詳細は画面下部の「ライセンス・クレジット」にも記載しています。
