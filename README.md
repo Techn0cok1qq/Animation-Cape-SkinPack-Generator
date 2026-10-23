@@ -146,7 +146,7 @@ image/TemplateCapes.png
 
 ## Fonts / Credits
 
-- `fonts/minecraft.ttf` — Minecraft font, CC BY-SA（Creative Commons 表示-継承）。作者名: （ダウンロード元で確認して記入）
+- `fonts/minecraft.ttf` — Minecraft font, CC BY-SA（Creative Commons 表示-継承）。
 - DotGothic16 — SIL Open Font License 1.1（Google Fontsから読み込み）
 
 詳細は画面下部の「ライセンス・クレジット」にも記載しています。
